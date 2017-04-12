@@ -889,7 +889,7 @@ namespace Enyim.Caching
         public ServerStats Stats(string type)
         {
             var results = new Dictionary<EndPoint, Dictionary<string, string>>();
-            var tasks = new List<Task>();
+            var tasks = new List<Action>();
 
             foreach (var node in this.pool.GetWorkingNodes())
             {
@@ -897,18 +897,15 @@ namespace Enyim.Caching
                 var action = new Func<IOperation, IOperationResult>(node.Execute);
                 var endpoint = node.EndPoint;
 
-                tasks.Add(Task.Run(() =>
+                tasks.Add(() =>
                 {
                     action(cmd);
                     lock (results)
                         results[endpoint] = cmd.Result;
-                }));
+                });
             }
 
-            if (tasks.Count > 0)
-            {
-                Task.WaitAll(tasks.ToArray());
-            }
+            ParallelExecute(tasks);
 
             return new ServerStats(results);
         }
@@ -958,7 +955,7 @@ namespace Enyim.Caching
             var byServer = GroupByServer(hashed.Keys);
 
             var retval = new Dictionary<string, T>(hashed.Count);
-            var tasks = new List<Task>();
+            var tasks = new List<Action>();
 
             //execute each list of keys on their respective node
             foreach (var slice in byServer)
@@ -972,7 +969,7 @@ namespace Enyim.Caching
                 var action = new Func<IOperation, IOperationResult>(node.Execute);
 
                 //execute the mgets in parallel
-                tasks.Add(Task.Run(() =>
+                tasks.Add(() =>
                 {
                     try
                     {
@@ -997,16 +994,65 @@ namespace Enyim.Caching
                     {
                         _logger.LogError("PerformMultiGet - " + e);
                     }
-                }));
+                });
             }
 
-            // wait for all nodes to finish
-            if (tasks.Count > 0)
-            {
-                Task.WaitAll(tasks.ToArray());
-            }
+            ParallelExecute(tasks);
 
             return retval;
+        }
+
+        private static void ParallelExecute(IEnumerable<Action> actions)
+        {
+            List<Exception> errors = new List<Exception>();
+            var promises = new List<Action>();
+            using (var e = actions.GetEnumerator())
+            {
+                if (!e.MoveNext()) return;
+                promises.Add(e.Current); // do the first one on this thread
+                while (e.MoveNext())
+                {
+                    promises.Add(GetPromise(e.Current)); // queue the rest
+                }
+            }
+            foreach (var promise in promises)
+            {
+                try
+                {
+                    promise();
+                }
+                catch (Exception e)
+                {
+                    errors.Add(e);
+                }
+            }
+            if (errors.Count > 0) throw new AggregateException(errors.ToArray());
+        }
+
+        private static Action GetPromise(Action action)
+        {
+            // if a thread pool thread doesn't get to it in time
+            // it will run on the invoking thread. that way we
+            // won't deadlock if the threadpool gets backed up
+            int started = 0;
+            var t = Task.Run(() =>
+            {
+                if (Interlocked.Increment(ref started) == 1)
+                {
+                    action();
+                }
+            });
+            return () =>
+            {
+                if (Interlocked.Increment(ref started) == 1)
+                {
+                    action();
+                }
+                else
+                {
+                    t.Wait();
+                }
+            };
         }
 
         protected Dictionary<IMemcachedNode, IList<string>> GroupByServer(IEnumerable<string> keys)
