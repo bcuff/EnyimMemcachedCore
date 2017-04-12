@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 [assembly: AssemblyProduct("Enyim.Caching")]
@@ -13,6 +14,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 [assembly: Guid("a8cd3f39-7731-4ee8-a7ce-444d540d4a4d")]
+[assembly: InternalsVisibleTo("Enyim.Caching.Tests")]
 
 #region [ License information          ]
 /* ************************************************************
