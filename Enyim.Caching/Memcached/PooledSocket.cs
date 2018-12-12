@@ -75,7 +75,7 @@ namespace Enyim.Caching.Memcached
                 IPAddress[] addresses;
                 var dnsEndPoint = ((DnsEndPoint)endpoint);
                 var host = dnsEndPoint.Host;
-                _logger.LogDebug("Resolving host by GetHostAddressesAsync()");
+                _logger.LogDebug("Resolving host by GetHostAddresses()");
                 addresses = Dns.GetHostAddresses(host);
 
                 var address = addresses.FirstOrDefault(ip => ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
