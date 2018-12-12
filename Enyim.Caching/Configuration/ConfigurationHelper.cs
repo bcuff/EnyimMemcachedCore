@@ -98,7 +98,7 @@ namespace Enyim.Caching.Configuration
             // parse as an IP address
             if (!IPAddress.TryParse(host, out address))
             {
-                var hostEntry = Dns.GetHostEntryAsync(host).Result;
+                var hostEntry = Dns.GetHostEntry(host);
                 var addresses = hostEntry.AddressList;
                 address = addresses.FirstOrDefault(ip => ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
                 if (address == null)

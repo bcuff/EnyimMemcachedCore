@@ -75,19 +75,8 @@ namespace Enyim.Caching.Memcached
                 IPAddress[] addresses;
                 var dnsEndPoint = ((DnsEndPoint)endpoint);
                 var host = dnsEndPoint.Host;
-                var method = typeof(System.Net.Dns).GetTypeInfo().GetMethod("InternalGetHostByName", BindingFlags.NonPublic | BindingFlags.Static);
-                if (method != null)
-                {
-                    _logger.LogDebug($"Resolving '{host}' by InternalGetHostByName()");
-                    addresses = ((IPHostEntry)method.Invoke(null, new object[] { host, false })).AddressList;                   
-                }
-                else
-                {
-                    _logger.LogDebug("Resolving host by GetHostAddressesAsync()");
-                    Task<IPAddress[]> task = Dns.GetHostAddressesAsync(host);
-                    task.Wait(timeout);
-                    addresses = task.Result;
-                }
+                _logger.LogDebug("Resolving host by GetHostAddressesAsync()");
+                addresses = Dns.GetHostAddresses(host);
 
                 var address = addresses.FirstOrDefault(ip => ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
                 if (address == null)
