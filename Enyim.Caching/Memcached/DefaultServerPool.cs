@@ -42,12 +42,6 @@ namespace Enyim.Caching.Memcached
             _logger = logger;
 		}
 
-		~DefaultServerPool()
-		{
-			try { ((IDisposable)this).Dispose(); }
-			catch { }
-		}
-
 		protected virtual IMemcachedNode CreateNode(EndPoint endpoint)
 		{
 			return new MemcachedNode(endpoint, this.configuration.SocketPool, _logger);
@@ -229,18 +223,14 @@ namespace Enyim.Caching.Memcached
 			remove { this.nodeFailed -= value; }
 		}
 
-		#endregion
-		#region [ IDisposable                  ]
+        #endregion
+        #region [ IDisposable                  ]
 
-		void IDisposable.Dispose()
+        protected virtual void Dispose(bool disposing)
 		{
-			GC.SuppressFinalize(this);
-
 			lock (this.DeadSync)
 			{
 				if (this.isDisposed) return;
-
-				this.isDisposed = true;
 
 				// dispose the locator first, maybe it wants to access 
 				// the nodes one last time
@@ -262,8 +252,12 @@ namespace Enyim.Caching.Memcached
 
 				this.allNodes = null;
 				this.resurrectTimer = null;
+
+				this.isDisposed = true;
 			}
 		}
+
+        void IDisposable.Dispose() => Dispose(true);
 
 		#endregion
 	}
