@@ -7,7 +7,7 @@
     <TargetFrameworks>netstandard2.0;net46</TargetFrameworks>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>EnyimMemcachedCore</AssemblyName>
-    <PackageId>EnyimMemcachedCore</PackageId>
+    <PackageId>bcuff.EnyimMemcachedCore</PackageId>
     <PackageTags>memcached;cache</PackageTags>
     <PackageProjectUrl>https://github.com/cnblogs/EnyimMemcachedCore</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
