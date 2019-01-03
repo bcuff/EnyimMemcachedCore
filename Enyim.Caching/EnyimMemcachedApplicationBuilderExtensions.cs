@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+#if NETSTANDARD
 namespace Microsoft.AspNetCore.Builder
 {
     public static class EnyimMemcachedApplicationBuilderExtensions
@@ -26,3 +27,4 @@ namespace Microsoft.AspNetCore.Builder
         }
     }
 }
+#endif

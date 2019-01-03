@@ -12,14 +12,19 @@ using Enyim.Caching.Memcached.Results.Extensions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+#if NETSTANDARD
 using Microsoft.Extensions.Caching.Distributed;
+#endif
 
 namespace Enyim.Caching
 {
     /// <summary>
     /// Memcached client.
     /// </summary>
-    public partial class MemcachedClient : IMemcachedClient, IMemcachedResultsClient, IDistributedCache
+    public partial class MemcachedClient : IMemcachedClient, IMemcachedResultsClient
+#if NETSTANDARD
+        , IDistributedCache
+#endif
     {
         /// <summary>
         /// Represents a value which indicates that an item should never expire.
@@ -1095,7 +1100,7 @@ namespace Enyim.Caching
 
         protected static string GetExpiratonKey(string key)
         {
-            return key + "-" + nameof(DistributedCacheEntryOptions);
+            return key + "-DistributedCacheEntryOptions";
         }
 
         #endregion
@@ -1127,7 +1132,8 @@ namespace Enyim.Caching
             }
         }
 
-        #region Implement IDistributedCache
+#region Implement IDistributedCache
+#if NETSTANDARD
 
         byte[] IDistributedCache.Get(string key)
         {
@@ -1209,9 +1215,10 @@ namespace Enyim.Caching
             await RemoveAsync(key);
         }
 
-        #endregion
+#endif
+#endregion
 
-        #endregion
+#endregion
     }
 }
 
