@@ -10,11 +10,6 @@ using Enyim.Caching.Memcached.Results;
 using Enyim.Caching.Memcached.Results.Factories;
 using Enyim.Caching.Memcached.Results.Extensions;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-#if NETSTANDARD
-using Microsoft.Extensions.Caching.Distributed;
-#endif
 
 namespace Enyim.Caching
 {
@@ -22,16 +17,13 @@ namespace Enyim.Caching
     /// Memcached client.
     /// </summary>
     public partial class MemcachedClient : IMemcachedClient, IMemcachedResultsClient
-#if NETSTANDARD
-        , IDistributedCache
-#endif
     {
         /// <summary>
         /// Represents a value which indicates that an item should never expire.
         /// </summary>
         public static readonly TimeSpan Infinite = TimeSpan.Zero;
         //internal static readonly MemcachedClientSection DefaultSettings = ConfigurationManager.GetSection("enyim.com/memcached") as MemcachedClientSection;
-        private ILogger<MemcachedClient> _logger;
+        private ILog _logger;
 
         private IServerPool pool;
         private IMemcachedKeyTransformer keyTransformer;
@@ -48,7 +40,7 @@ namespace Enyim.Caching
         protected ITranscoder Transcoder { get { return this.transcoder; } }
 
         public MemcachedClient(
-            ILogger<MemcachedClient> logger,
+            ILog logger,
             IMemcachedClientConfiguration configuration)
         {
             _logger = logger;
@@ -159,13 +151,13 @@ namespace Enyim.Caching
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(0, ex, $"{nameof(GetAsync)}(\"{key}\")");
+                    _logger.Error($"{nameof(GetAsync)}(\"{key}\")", ex);
                     throw ex;
                 }
             }
             else
             {
-                _logger.LogError($"Unable to locate memcached node");
+                _logger.Error($"Unable to locate memcached node");
             }
 
             return default(T);
@@ -214,13 +206,13 @@ namespace Enyim.Caching
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(0, ex, $"{nameof(GetAsync)}(\"{key}\")");
+                    _logger.Error($"{nameof(GetAsync)}(\"{key}\")", ex);
                     throw ex;
                 }
             }
             else
             {
-                _logger.LogError($"Unable to locate memcached node");
+                _logger.Error($"Unable to locate memcached node");
             }
 
             result.Success = false;
@@ -470,7 +462,7 @@ namespace Enyim.Caching
                 try { item = this.transcoder.Serialize(value); }
                 catch (Exception e)
                 {
-                    _logger.LogError("PerformStore - " + e);
+                    _logger.Error("PerformStore - " + e);
 
                     result.Fail("PerformStore failed", e);
                     return result;
@@ -518,7 +510,7 @@ namespace Enyim.Caching
                 try { item = this.transcoder.Serialize(value); }
                 catch (Exception e)
                 {
-                    _logger.LogError(new EventId(), e, $"{nameof(PerformStoreAsync)} for '{key}' key");
+                    _logger.Error($"{nameof(PerformStoreAsync)} for '{key}' key", e);
 
                     result.Fail("PerformStore failed", e);
                     return result;
@@ -997,7 +989,7 @@ namespace Enyim.Caching
                     }
                     catch (Exception e)
                     {
-                        _logger.LogError("PerformMultiGet - " + e);
+                        _logger.Error("PerformMultiGet - " + e);
                     }
                 });
             }
@@ -1131,92 +1123,6 @@ namespace Enyim.Caching
                 finally { this.pool = null; }
             }
         }
-
-#region Implement IDistributedCache
-#if NETSTANDARD
-
-        byte[] IDistributedCache.Get(string key)
-        {
-            _logger.LogInformation($"{nameof(IDistributedCache.Get)}(\"{key}\")");
-
-            return Get<byte[]>(key);
-        }
-
-        async Task<byte[]> IDistributedCache.GetAsync(string key, CancellationToken token = default(CancellationToken))
-        {
-            _logger.LogInformation($"{nameof(IDistributedCache.GetAsync)}(\"{key}\")");
-
-            return await GetValueAsync<byte[]>(key);
-        }
-
-        void IDistributedCache.Set(string key, byte[] value, DistributedCacheEntryOptions options)
-        {
-            _logger.LogInformation($"{nameof(IDistributedCache.Set)}(\"{key}\")");
-
-            ulong cas = 0;
-            var expires = MemcachedClient.GetExpiration(options.SlidingExpiration, null, options.AbsoluteExpiration, options.AbsoluteExpirationRelativeToNow);
-            PerformStore(StoreMode.Set, key, value, expires, cas);
-            if (expires > 0)
-            {
-                PerformStore(StoreMode.Set, GetExpiratonKey(key), expires, expires, cas);
-            }
-        }
-
-        async Task IDistributedCache.SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default(CancellationToken))
-        {
-            _logger.LogInformation($"{nameof(IDistributedCache.SetAsync)}(\"{key}\")");
-
-            var expires = MemcachedClient.GetExpiration(options.SlidingExpiration, null, options.AbsoluteExpiration, options.AbsoluteExpirationRelativeToNow);
-            await PerformStoreAsync(StoreMode.Set, key, value, expires);
-            if (expires > 0)
-            {
-                await PerformStoreAsync(StoreMode.Set, GetExpiratonKey(key), expires, expires);
-            }
-        }
-
-        void IDistributedCache.Refresh(string key)
-        {
-            _logger.LogInformation($"{nameof(IDistributedCache.Refresh)}(\"{key}\")");
-
-            var value = Get(key);
-            if (value != null)
-            {
-                var expirationValue = Get(GetExpiratonKey(key));
-                if (expirationValue != null)
-                {
-                    ulong cas = 0;
-                    PerformStore(StoreMode.Replace, key, value, uint.Parse(expirationValue.ToString()), cas);
-                }
-            }
-        }
-
-        async Task IDistributedCache.RefreshAsync(string key, CancellationToken token = default(CancellationToken))
-        {
-            _logger.LogInformation($"{nameof(IDistributedCache.RefreshAsync)}(\"{key}\")");
-
-            var result = await GetAsync<byte[]>(key);
-            if (result.Success)
-            {
-                var expirationResult = await GetAsync<uint>(GetExpiratonKey(key));
-                if (expirationResult.Success)
-                {
-                    await PerformStoreAsync(StoreMode.Replace, key, result.Value, expirationResult.Value);
-                }
-            }
-        }
-
-        void IDistributedCache.Remove(string key)
-        {
-            Remove(key);
-        }
-
-        async Task IDistributedCache.RemoveAsync(string key, CancellationToken token = default(CancellationToken))
-        {
-            await RemoveAsync(key);
-        }
-
-#endif
-#endregion
 
 #endregion
     }

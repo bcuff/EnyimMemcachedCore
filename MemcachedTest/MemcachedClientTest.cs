@@ -20,15 +20,11 @@ namespace MemcachedTest
 
         protected virtual MemcachedClient GetClient(MemcachedProtocol protocol = MemcachedProtocol.Binary)
         {
-            IServiceCollection services = new ServiceCollection();
-            services.AddEnyimMemcached(options =>
-            {
-                options.AddServer("memcached", 11211);
-                options.Protocol = protocol;
-            });
-            services.AddLogging();
-            IServiceProvider serviceProvider = services.BuildServiceProvider();
-            var client = serviceProvider.GetService<IMemcachedClient>() as MemcachedClient;
+            var logger = ((ILogFactory)new NullLoggerFactory()).GetLogger(nameof(MemcachedClient));
+            var config = new MemcachedClientConfiguration(logger);
+            config.AddServer("localhost", 11211);
+            config.Protocol = protocol;
+            var client = new MemcachedClient(logger, config);
             client.Remove("VALUE");
             return client;
         }

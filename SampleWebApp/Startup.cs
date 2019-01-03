@@ -48,7 +48,7 @@ namespace SampleWebApp
             }
         }        
 
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILogFactory loggerFactory)
         {
             loggerFactory.AddConsole(LogLevel.Debug);
 
@@ -66,13 +66,13 @@ namespace SampleWebApp
                 {
                     await context.Response.WriteAsync(cacheResult.Value);
                     await memcachedClient.RemoveAsync(cacheKey);
-                    logger.LogDebug($"Hinted cache with '{cacheKey}' key");
+                    logger.Debug($"Hinted cache with '{cacheKey}' key");
                 }
                 else
                 {
                     var message = $"Missed cache with '{cacheKey}' key";
                     await context.Response.WriteAsync(message);
-                    logger.LogError(message);
+                    logger.Error(message);
                 }
             });
         }

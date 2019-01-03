@@ -17,19 +17,15 @@ namespace MemcachedTest
 		[Fact]
 		public void TestIfCalled()
 		{
-            IServiceCollection services = new ServiceCollection();
-            services.AddEnyimMemcached(options => options.AddServer("memcached", 11212));
-            services.AddLogging();
-            IServiceProvider serviceProvider = services.BuildServiceProvider();
-
-            var config = serviceProvider.GetService<IMemcachedClientConfiguration>();
+            var logger = ((ILogFactory)new NullLoggerFactory()).GetLogger(nameof(MemcachedClient));
+            var config = new MemcachedClientConfiguration(logger);
+            config.AddServer("localhost", 11211);
             config.SocketPool.FailurePolicyFactory = new FakePolicy();
             config.SocketPool.ConnectionTimeout = TimeSpan.FromSeconds(1);
             config.SocketPool.ReceiveTimeout = TimeSpan.FromSeconds(1);
 
-            var logger = serviceProvider.GetService<ILogger<MemcachedClient>>();
 
-            var client = new MemcachedClient(logger, config);            
+            var client = new MemcachedClient(logger, config);
 
             Assert.Null(client.Get("a"));
 		}
@@ -52,19 +48,15 @@ namespace MemcachedTest
 		[Fact]
 		public void TestThrottlingFailurePolicy()
 		{
-            IServiceCollection services = new ServiceCollection();
-            services.AddEnyimMemcached(options => options.AddServer("localhost", 11212));
-            services.AddLogging();
-            IServiceProvider serviceProvider = services.BuildServiceProvider();
-
-            var config = serviceProvider.GetService<IMemcachedClientConfiguration>();           
+            var logger = ((ILogFactory)new NullLoggerFactory()).GetLogger(nameof(MemcachedClient));
+            var config = new MemcachedClientConfiguration(logger);
+            config.AddServer("localhost", 11211);
 			config.SocketPool.FailurePolicyFactory = new ThrottlingFailurePolicyFactory(4, TimeSpan.FromMilliseconds(2000));
 			config.SocketPool.ConnectionTimeout = TimeSpan.FromMilliseconds(5);
 			config.SocketPool.ReceiveTimeout = TimeSpan.FromMilliseconds(5);
 			config.SocketPool.MinPoolSize = 1;
 			config.SocketPool.MaxPoolSize = 1;
 
-            var logger = serviceProvider.GetService<ILogger<MemcachedClient>>();
             var client = new MemcachedClient(logger, config);
             var canFail = false;
 			var didFail = false;

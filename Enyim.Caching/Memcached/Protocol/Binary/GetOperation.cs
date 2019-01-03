@@ -3,16 +3,15 @@ using System.Text;
 using Enyim.Caching.Memcached.Results;
 using Enyim.Caching.Memcached.Results.Extensions;
 using Enyim.Caching.Memcached.Results.Helpers;
-using Microsoft.Extensions.Logging;
 
 namespace Enyim.Caching.Memcached.Protocol.Binary
 {
     public class GetOperation : BinarySingleItemOperation, IGetOperation
     {
-        private readonly ILogger _logger;
+        private readonly ILog _logger;
         private CacheItem result;
 
-        public GetOperation(string key, ILogger logger) : base(key)
+        public GetOperation(string key, ILog logger) : base(key)
         {
             _logger = logger;
         }
@@ -43,7 +42,7 @@ namespace Enyim.Caching.Memcached.Protocol.Binary
 
 #if EVEN_MORE_LOGGING
                 if(_logger.IsEnabled(LogLevel.Debug))
-			        _logger.LogDebug("Get succeeded for key '{0}'.", this.Key);
+			        _logger.Debug("Get succeeded for key '{0}'.", this.Key);
 #endif
 
                 return result.Pass();
@@ -53,7 +52,7 @@ namespace Enyim.Caching.Memcached.Protocol.Binary
 
 #if EVEN_MORE_LOGGING
             if(_logger.IsEnabled(LogLevel.Debug))
-			    _logger.LogDebug("Get failed for key '{0}'. Reason: {1}", this.Key, Encoding.ASCII.GetString(response.Data.Array, response.Data.Offset, response.Data.Count));
+			    _logger.Debug("Get failed for key '{0}'. Reason: {1}", this.Key, Encoding.ASCII.GetString(response.Data.Array, response.Data.Offset, response.Data.Count));
 #endif
 
             var message = ResultHelper.ProcessResponseData(response.Data);

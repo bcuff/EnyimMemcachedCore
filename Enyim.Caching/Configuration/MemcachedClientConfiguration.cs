@@ -4,8 +4,6 @@ using System.Net;
 using Enyim.Caching.Memcached;
 using Enyim.Reflection;
 using Enyim.Caching.Memcached.Protocol.Binary;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Enyim.Caching.Configuration
 {
@@ -18,84 +16,17 @@ namespace Enyim.Caching.Configuration
         private Type nodeLocator;
         private ITranscoder transcoder;
         private IMemcachedKeyTransformer keyTransformer;
-        private ILogger<MemcachedClient> _logger;
+        private ILog _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="T:MemcachedClientConfiguration"/> class.
         /// </summary>
-        public MemcachedClientConfiguration(
-            ILogger<MemcachedClient> logger,
-            IOptions<MemcachedClientOptions> optionsAccessor)
+        public MemcachedClientConfiguration(ILog logger)
         {
-            if (optionsAccessor == null)
-            {
-                throw new ArgumentNullException(nameof(optionsAccessor));
-            }
-
             _logger = logger;
-
-            var options = optionsAccessor.Value;
             Servers = new List<EndPoint>();
-            foreach (var server in options.Servers)
-            {
-                IPAddress address;
-                if (IPAddress.TryParse(server.Address, out address))
-                {
-                    Servers.Add(new IPEndPoint(address, server.Port));
-                }
-                else
-                {
-                    Servers.Add(new DnsEndPoint(server.Address, server.Port));
-                }                
-            }
-            SocketPool = options.SocketPool;
-            Protocol = options.Protocol;
-
-            if (options.Authentication != null && !string.IsNullOrEmpty(options.Authentication.Type))
-            {
-                try
-                {
-                    var authenticationType = Type.GetType(options.Authentication.Type);
-                    if (authenticationType != null)
-                    {
-                        _logger.LogDebug($"Authentication type is {authenticationType}.");
-
-                        Authentication = new AuthenticationConfiguration();
-                        Authentication.Type = authenticationType;
-                        foreach (var parameter in options.Authentication.Parameters)
-                        {
-                            Authentication.Parameters[parameter.Key] = parameter.Value;
-                            _logger.LogDebug($"Authentication {parameter.Key} is '{parameter.Value}'.");
-                        }
-                    }
-                    else
-                    {
-                        _logger.LogError($"Unable to load authentication type {options.Authentication.Type}.");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(new EventId(), ex, $"Unable to load authentication type {options.Authentication.Type}.");
-                }
-            }
-
-            if(!string.IsNullOrEmpty(options.KeyTransformer))
-            {
-                try
-                {
-                    var keyTransformerType = Type.GetType(options.KeyTransformer);
-                    if (keyTransformerType != null)
-                    {
-                        KeyTransformer = Activator.CreateInstance(keyTransformerType) as IMemcachedKeyTransformer;
-                        _logger.LogDebug($"Use '{options.KeyTransformer}' KeyTransformer");
-                    }
-                }
-                catch(Exception ex)
-                {
-                    _logger.LogError(new EventId(), ex, $"Unable to load '{options.KeyTransformer}' KeyTransformer");
-                }                
-            }
-        }   
+            SocketPool = new SocketPoolConfiguration();
+        }
 
 		/// <summary>
 		/// Adds a new server to the pool.
