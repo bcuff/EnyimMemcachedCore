@@ -448,13 +448,6 @@ namespace Enyim.Caching
 
             statusCode = -1;
 
-
-            if (value == null)
-            {
-                result.Fail("value is null");
-                return result;
-            }
-
             if (node != null)
             {
                 CacheItem item;
